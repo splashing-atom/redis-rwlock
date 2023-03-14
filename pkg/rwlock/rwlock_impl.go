@@ -20,11 +20,11 @@ type lockerImpl struct {
 }
 
 func (l *lockerImpl) Read(fn func()) error {
-	return l.do(fn, l.acquireReader, l.refreshReader, l.releaseReader)
+	return l.do(fn, l.AcquireReader, l.RefreshReader, l.ReleaseReader)
 }
 
 func (l *lockerImpl) Write(fn func()) error {
-	return l.do(fn, l.acquireWriter, l.refreshWriter, l.releaseWriter)
+	return l.do(fn, l.AcquireWriter, l.RefreshWriter, l.ReleaseWriter)
 }
 
 func (l *lockerImpl) do(fn func(), acquire func() (bool, error), refresh func() (bool, error), release func() (bool, error)) error {
@@ -39,7 +39,7 @@ func (l *lockerImpl) do(fn func(), acquire func() (bool, error), refresh func() 
 	if !acquired {
 		return ErrTimeout
 	}
-	go l.keepRefreshing(refresh, stopRefreshing)
+	go l.KeepRefreshing(refresh, stopRefreshing)
 	fnErr := l.runFn(fn)
 	stopRefreshing <- struct{}{}
 	released, err := release()
@@ -97,7 +97,7 @@ func (l *lockerImpl) wait(d time.Duration) error {
 	}
 }
 
-func (l *lockerImpl) keepRefreshing(refresh func() (bool, error), stop chan struct{}) {
+func (l *lockerImpl) KeepRefreshing(refresh func() (bool, error), stop chan struct{}) {
 	timeout := l.options.LockTTL / 2
 	timer := time.NewTicker(timeout)
 	defer timer.Stop()
@@ -114,7 +114,7 @@ func (l *lockerImpl) keepRefreshing(refresh func() (bool, error), stop chan stru
 	}
 }
 
-func (l *lockerImpl) acquireReader() (bool, error) {
+func (l *lockerImpl) AcquireReader() (bool, error) {
 	var preferWriter = 0
 	switch l.options.Mode {
 	case ModePreferWriter:
@@ -131,20 +131,20 @@ func (l *lockerImpl) acquireReader() (bool, error) {
 	}, l.options.ReaderLockToken, l.lockTTL, preferWriter)
 }
 
-func (l *lockerImpl) releaseReader() (bool, error) {
+func (l *lockerImpl) ReleaseReader() (bool, error) {
 	return l.execScript(releaseReadLock, []string{
 		l.keyGlobalLock,
 		l.keyReadersCount,
 	}, l.options.ReaderLockToken)
 }
 
-func (l *lockerImpl) refreshReader() (bool, error) {
+func (l *lockerImpl) RefreshReader() (bool, error) {
 	return l.execScript(refreshLock, []string{
 		l.keyGlobalLock,
 	}, l.options.ReaderLockToken, l.lockTTL)
 }
 
-func (l *lockerImpl) acquireWriter() (bool, error) {
+func (l *lockerImpl) AcquireWriter() (bool, error) {
 	return l.execScript(acquireWriteLock, []string{
 		l.keyGlobalLock,
 		l.keyReadersCount,
@@ -152,13 +152,13 @@ func (l *lockerImpl) acquireWriter() (bool, error) {
 	}, l.writerToken, l.lockTTL)
 }
 
-func (l *lockerImpl) releaseWriter() (bool, error) {
+func (l *lockerImpl) ReleaseWriter() (bool, error) {
 	return l.execScript(releaseWriteLock, []string{
 		l.keyGlobalLock,
 	}, l.writerToken)
 }
 
-func (l *lockerImpl) refreshWriter() (bool, error) {
+func (l *lockerImpl) RefreshWriter() (bool, error) {
 	return l.execScript(refreshLock, []string{
 		l.keyGlobalLock,
 	}, l.writerToken, l.lockTTL)
