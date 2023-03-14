@@ -3,9 +3,8 @@ package rwlock
 import (
 	"errors"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"time"
-
-	"github.com/go-redis/redis"
 )
 
 type lockerImpl struct {
@@ -29,7 +28,7 @@ func (l *lockerImpl) Write(fn func()) error {
 }
 
 func (l *lockerImpl) do(fn func(), acquire func() (bool, error), refresh func() (bool, error), release func() (bool, error)) error {
-	if l.redisClient.Ping().Err() != nil {
+	if l.redisClient.Ping(l.options.Context).Err() != nil {
 		return ErrConnection
 	}
 	stopRefreshing := make(chan struct{})
@@ -166,7 +165,7 @@ func (l *lockerImpl) refreshWriter() (bool, error) {
 }
 
 func (l *lockerImpl) execScript(script *redis.Script, keys []string, args ...interface{}) (bool, error) {
-	status, err := script.Run(l.redisClient, keys, args...).Result()
+	status, err := script.Run(l.options.Context, l.redisClient, keys, args...).Result()
 	if err != nil {
 		return false, err
 	}

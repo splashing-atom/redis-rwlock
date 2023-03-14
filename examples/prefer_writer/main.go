@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"sync"
 	"time"
 
-	rwlock "github.com/e-chip/redis-rwlock"
-	"github.com/go-redis/redis"
+	rwlock "github.com/splashing-atom/redis-rwlock"
 )
 
 const (
