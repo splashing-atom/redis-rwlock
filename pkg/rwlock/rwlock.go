@@ -28,6 +28,16 @@ type Locker interface {
 	Read(fn func()) error
 	// Write executes given function with unique writer access.
 	Write(fn func()) error
+
+	// control the lock manually.
+	//it is your responsibility to refresh using KeepRefreshing
+	AcquireReader() (bool, error)
+	AcquireWriter() (bool, error)
+	ReleaseReader() (bool, error)
+	ReleaseWriter() (bool, error)
+	RefreshReader() (bool, error)
+	RefreshWriter() (bool, error)
+	KeepRefreshing(refresh func() (bool, error), stop chan struct{})
 }
 
 // New instance of RW-Locker.
